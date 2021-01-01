@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>PJCovid-Client</title>
+    <!-- Add some CSS to change client UI -->
+    <style>
+    body {
+        background-color: #232F3E;
+        }
+    label, button {
+        color: #FF9900;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 20px;
+        margin-left: 40px;
+        }
+     input {
+        color: #232F3E;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 20px;
+        margin-left: 20px;
+        }
+    </style>
+    <script>
+        // define the callAPI function that takes a first name and last name as parameters
+        var callAPI = (cubicle)=>{
+            // instantiate a headers object
+            var myHeaders = new Headers();
+            // add content type header to object
+            myHeaders.append("Content-Type", "application/json");
+            // using built in JSON utility package turn object to string and store in a variable
+            var int_cubicle = +cubicle;
+            var raw = JSON.stringify({"cubicle":int_cubicle});
+            console.log("sending:"+raw);
+            // create a JSON object with parameters for API call and store in a variable
+            var requestOptions = {
+                method: 'POST',
+                headers: myHeaders,
+                body: raw,
+                redirect: 'follow'
+            };
+
+            fetch_data(requestOptions);
+            // make API call with parameters and use promises to get response
+            /*fetch("https://8xqn4k1q1i.execute-api.us-east-2.amazonaws.com/dev", requestOptions)
+            .then(response => response.text())
+            .then(answer => processreturn(JSON.parse(result).body))
+            .catch(error => console.log('error', error)); // result */
+        }
+
+  async function fetch_data(requestOptions) {
+    try {
+      const response = await fetch("https://cnba5fhedg.execute-api.us-east-2.amazonaws.com/dev", requestOptions);
+      const data = await response.json();
+      console.log(data);
+      processreturn(data.body);
+    } catch (err) {
+                    console.log(err)
+                  }
+  }
+
+	function processreturn(answer)
+	{
+      var js_answer;
+
+	    console.log("Answer:"+answer);
+
+      //js_answer = JSON.parse(answer);
+
+      var jsonData = JSON.parse(answer);
+      for (var i = 0; i < jsonData.length; i++) {
+        var timestamp = jsonData[i].timestamp;
+        console.log(timestamp);
+        }
+
+      console.log("JS answer length = "+jsonData.length);
+
+      document.getElementById("fifth").innerHTML = jsonData[jsonData.length -1].timestamp;
+	    document.getElementById("fourth").innerHTML = jsonData[jsonData.length -2].timestamp;
+	    document.getElementById("third").innerHTML = jsonData[jsonData.length -3].timestamp;
+	    document.getElementById("second").innerHTML = jsonData[jsonData.length -4].timestamp;
+	}
+    </script>
+</head>
+<body>
+    <form>
+        <label>Cubicle :</label>
+        <input type="text" id="field_cubicle">
+        <!-- set button onClick method to call function we defined passing input values as parameters -->
+        <button type="button" onclick="callAPI(document.getElementById('field_cubicle').value)">Vaccine Given</button>
+    </form>
+    <p> This is an example paragraph. </p>
+    <p id="doses"></p>
+
+    <table style="width:; background-color: #ffffff">
+	<tr><th>Time doses given</th></tr>
+	<tr><td id="fifth"></td></tr>
+	<tr><td id="fourth"></td></tr>
+	<tr><td id="third"></td></tr>
+	<tr><td id="second"></td></tr>
+	<tr><td id="first"></td></tr>
+    </table>
+</body>
+</html>

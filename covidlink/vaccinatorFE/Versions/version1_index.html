@@ -1,0 +1,26 @@
+/*var docClient = new AWS.DynamoDB.DocumentClient();
+    
+    var readparams = {
+    TableName : "text-pjcovid-vaccines",
+    //KeyConditionExpression: `cubicle = "N":${intcubicle}`
+    
+    KeyConditionExpression: "cubicle = :cubval",
+    ExpressionAttributeValues: {
+        ":cubval": intcubicle
+        }
+    
+    };*/
+
+    
+    /*docClient.query(readparams, function(err, data) {
+    if (err) {
+        console.error("Unable to query. Error:", JSON.stringify(err, null, 2));
+    } else {
+        console.log("Query succeeded.");
+        data.Items.forEach(function(item) {
+            testreturn=testreturn+item.timestamp+"\n"+"succeeded";
+            
+            console.log(" -", item.cubicle + ": " + item.timestamp);
+        });
+    }
+    });*/
