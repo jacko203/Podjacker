@@ -8,7 +8,6 @@ let dynamodb = new AWS.DynamoDB.DocumentClient();
 
 var testreturn = 0;
 var json_return_array;
-var vials_return_array;
 
 exports.handler = async (event) => {
 
@@ -28,23 +27,10 @@ exports.handler = async (event) => {
             'timestamp': now
         }
       };
-
-      var vialincrement = {
-        TableName:'pjcovid-vials',
-        Key: {
-          "cubicle":int_cubicle
-        },
-        UpdateExpression: 'add thisvial :increment',
-        ExpressionAttributeValues: {
-          ":increment": 1
-          },
-        ReturnValues: 'ALL_NEW'
-      };
-
     // Using await, make sure object writes to DynamoDB table before continuing execution
     console.log("Putting item:" +int_cubicle);
 
-    //var docClient = new AWS.DynamoDB.DocumentClient();
+    var docClient = new AWS.DynamoDB.DocumentClient();
 
     var readparams = {
           TableName : "text-pjcovid-vaccines",
@@ -61,20 +47,11 @@ exports.handler = async (event) => {
           await dynamodb.put(params).promise();
           console.log("put promise resolved");
         // Now query for all from this cubicle
-          let data = await dynamodb.query(readparams).promise();
+          let data = await docClient.query(readparams).promise();
 
           console.log("about to create return array");
           json_return_array = JSON.stringify(data.Items);
 
-          let vials_back = await dynamodb.update(vialincrement).promise();
-          if (vials_back == null) { console.log("null return from vials");
-              }
-          else {
-            console.log("Vials returning:"+vials_back);
-          }
-
-          vials_return_array = JSON.stringify(vials_back.Items);
-          console.log("Vials return"+vials_return_array);
         } catch (err) { console.log(err) }
 
     console.log("Returning");
@@ -85,29 +62,5 @@ exports.handler = async (event) => {
       }
 
       return response;
-    }
-
-    else if (event.operation == 'removejab')
-    {
-      console.log("remove jab");
-    }
-
-    else if (event.operation == 'gpoverview')
-    {
-      console.log("GP Lead screen");
-    }
-
-    else if (event.operation == 'pharmaoverview')
-    {
-      console.log("Pharma overview");
-    }
-
-    else if (event.operation == 'newvial')
-    {
-      var cubicle = event.cubicle;
-      var doses = event.vialdoses;
-      console.log("new vial for:"+cubicle+"with doses:"+doses);
-      // reset cubicle counter to number
-
     }
 };
