@@ -70,11 +70,11 @@ exports.handler = async (event) => {
           if (vials_back == null) { console.log("null return from vials");
               }
           else {
-            console.log("Vials returning:"+vials_back);
+            vials_return_array = JSON.stringify(vials_back);
+            console.log("Vials return"+vials_return_array);
           }
 
-          vials_return_array = JSON.stringify(vials_back.Items);
-          console.log("Vials return"+vials_return_array);
+
         } catch (err) { console.log(err) }
 
     console.log("Returning");
