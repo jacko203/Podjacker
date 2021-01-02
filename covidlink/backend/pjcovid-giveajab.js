@@ -6,26 +6,64 @@ let dynamodb = new AWS.DynamoDB.DocumentClient();
 let date = new Date();
 // Store date and time in human-readable format in a variable
 let now = date.toISOString();
+var testreturn = 0;
+var json_return_array;
 
 exports.handler = async (event) => {
 
-    var write_cubicle = JSON.stringify(event.cubicle);
+
+    var int_cubicle = parseInt( JSON.stringify(event.cubicle) );
 
     let params = {
-        TableName:'pjcovid-vaccines',
+        TableName:'text-pjcovid-vaccines',
         Item: {
-            'cubicle': write_cubicle,
+            'cubicle': int_cubicle,
             'timestamp': now
         }
     };
     // Using await, make sure object writes to DynamoDB table before continuing execution
-    await dynamodb.put(params).promise();
+    console.log("Putting item:" +int_cubicle);
 
+    var docClient = new AWS.DynamoDB.DocumentClient();
 
-    // TODO implement
-    var response = {
-        statusCode: 200,
-        body: JSON.stringify(write_cubicle+" at "+now),
+    var readparams = {
+    TableName : "text-pjcovid-vaccines",
+    //KeyConditionExpression: `cubicle = "N":${intcubicle}`
+
+    KeyConditionExpression: "cubicle = :cubval",
+    ExpressionAttributeValues: {
+        ":cubval": int_cubicle
+        }
+
     };
-    return response;
+    console.log("Getting item:"+int_cubicle);
+
+    try {
+          await dynamodb.put(params).promise();
+          console.log("put promise resolved");
+        // Now query for all from this cubicle
+          let data = await docClient.query(readparams).promise();
+/*
+            , function(err, data) {
+
+                if (err) {
+                    console.error("Unable to query. Error:", JSON.stringify(err, null, 2));
+                } else {
+                    console.log("Query succeeded. cubicle: "+int_cubicle+"Number of items"+data.Items.length);
+*/
+                    console.log("about to create return array");
+                    json_return_array = JSON.stringify(data.Items);
+//                }
+            }
+        } catch (err) { console.log(err) }
+
+    console.log("Returning");
+
+      var response = {
+        statusCode: 200,
+        body: json_return_array
+      }
+
+      return response;
+
 };

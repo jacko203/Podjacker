@@ -23,14 +23,14 @@
     </style>
     <script>
         // define the callAPI function that takes a first name and last name as parameters
-        var callAPI = (cubicle)=>{
+        var doVaccine = (cubicle)=>{
             // instantiate a headers object
             var myHeaders = new Headers();
             // add content type header to object
             myHeaders.append("Content-Type", "application/json");
             // using built in JSON utility package turn object to string and store in a variable
             var int_cubicle = +cubicle;
-            var raw = JSON.stringify({"cubicle":int_cubicle});
+            var raw = JSON.stringify({"operation":"dovaccinate","cubicle":int_cubicle});
             console.log("sending:"+raw);
             // create a JSON object with parameters for API call and store in a variable
             var requestOptions = {
@@ -41,14 +41,18 @@
             };
 
             fetch_data(requestOptions);
+          }
             // make API call with parameters and use promises to get response
-            /*fetch("https://8xqn4k1q1i.execute-api.us-east-2.amazonaws.com/dev", requestOptions)
+          /*  fetch("https://cnba5fhedg.execute-api.us-east-2.amazonaws.com/dev", requestOptions)
             .then(response => response.text())
-            .then(answer => processreturn(JSON.parse(result).body))
-            .catch(error => console.log('error', error)); // result */
-        }
+            .then(function (result) {
+                console.log("Answer: "+result);
+                return processreturn(JSON.parse(result));
+              })
+            .catch(error => console.log('error', error)); // result
+        }*/
 
-/*  async function fetch_data(requestOptions) {
+  async function fetch_data(requestOptions) {
     try {
       const response = await fetch("https://cnba5fhedg.execute-api.us-east-2.amazonaws.com/dev", requestOptions);
       const data = await response.json();
@@ -57,20 +61,7 @@
     } catch (err) {
                     console.log(err)
                   }
-  }*/
-
-function fetch_data(requestOptions)
-{
-  let promise = fetch("https://8xqn4k1q1i.execute-api.us-east-2.amazonaws.com/dev", requestOptions)
-  .then ( function (response) {
-    return response.text();
-    })
-  .then ( function (text) {
-      console.log("in Then.:"+text.body);
-      processreturn(text.body);
-    });
-
-}
+  }
 
 	function processreturn(answer)
 	{
@@ -100,7 +91,7 @@ function fetch_data(requestOptions)
         <label>Cubicle :</label>
         <input type="text" id="field_cubicle">
         <!-- set button onClick method to call function we defined passing input values as parameters -->
-        <button type="button" onclick="callAPI(document.getElementById('field_cubicle').value)">Vaccine Given</button>
+        <button type="button" onclick="doVaccine(document.getElementById('field_cubicle').value)">Vaccine Given</button>
     </form>
     <p> This is an example paragraph. </p>
     <p id="doses"></p>
