@@ -11,8 +11,14 @@ var json_return_array;
 
 exports.handler = async (event) => {
 
+    //make this better
+    if(event.operation == "dovaccinate")
+    {
+      console.log("in do-vaccinate");
 
-    var int_cubicle = parseInt( JSON.stringify(event.cubicle) );
+
+
+    var int_cubicle = event.cubicle;
 
     let params = {
         TableName:'text-pjcovid-vaccines',
@@ -27,34 +33,25 @@ exports.handler = async (event) => {
     var docClient = new AWS.DynamoDB.DocumentClient();
 
     var readparams = {
-    TableName : "text-pjcovid-vaccines",
-    //KeyConditionExpression: `cubicle = "N":${intcubicle}`
+          TableName : "text-pjcovid-vaccines",
+          KeyConditionExpression: "cubicle = :cubval",
+          ExpressionAttributeValues: {
+              ":cubval": int_cubicle
+              }
+            };
 
-    KeyConditionExpression: "cubicle = :cubval",
-    ExpressionAttributeValues: {
-        ":cubval": int_cubicle
-        }
-
-    };
     console.log("Getting item:"+int_cubicle);
 
     try {
+
           await dynamodb.put(params).promise();
           console.log("put promise resolved");
         // Now query for all from this cubicle
           let data = await docClient.query(readparams).promise();
-/*
-            , function(err, data) {
 
-                if (err) {
-                    console.error("Unable to query. Error:", JSON.stringify(err, null, 2));
-                } else {
-                    console.log("Query succeeded. cubicle: "+int_cubicle+"Number of items"+data.Items.length);
-*/
-                    console.log("about to create return array");
-                    json_return_array = JSON.stringify(data.Items);
-//                }
-            }
+          console.log("about to create return array");
+          json_return_array = JSON.stringify(data.Items);
+
         } catch (err) { console.log(err) }
 
     console.log("Returning");
@@ -65,5 +62,5 @@ exports.handler = async (event) => {
       }
 
       return response;
-
+    }
 };
