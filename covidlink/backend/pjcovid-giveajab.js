@@ -9,6 +9,11 @@ let dynamodb = new AWS.DynamoDB.DocumentClient();
 var json_return_array;
 var vials_return_array;
 
+var live_data {
+  vars: string,
+  time: Date
+};
+
 class response_obj {
   constructor(statuscode, body) {
     this.statusCode = statuscode;
@@ -96,13 +101,13 @@ exports.handler = async (event) => {
 
       console.log("remove jab: t:"+timestamp+"from c:"+cubicle);
 
+      // remove timestamp/dose
       var removeparams = {
         TableName: "text-pjcovid-vaccines",
         Key: {  "cubicle": cubicle,
-                "timestamp": timestamp }
+                "timestamp": timestamp,
+        ReturnValues: "ALL_OLD" } //returns empty if nothing deleted
       };
-
-
 
       // subtract thiscubicle by 1
       var vialdecrement = {
@@ -139,39 +144,42 @@ exports.handler = async (event) => {
     {
 
       console.log("GP Lead screen");
-      // need to return array containing number of vaccines for each cubicle (passed number of cubicles)
 
       let cubicle_count = event.cubicle_count;
 
       //scan table then local function to return into array
-      // select count
       var scanparams = {
             TableName : "pjcovid-vials",
             FilterExpression : "cubicle <= :cubicle_count",
             ExpressionAttributeValues : { ":cubicle_count": cubicle_count }
           };
 
-          // TODO? limit time between scans? have global variable updated every x seconds?
-      try {
+
+      var timer = new Date();
+      if (live_data.time < timer || live_data.time === undefined) {
+
+        console.log("New scan event");
+
+        try {
 
             var data = await dynamodb.scan(scanparams).promise();
-            var scanneditems = JSON.stringify(data.Items);
+            live_data.vars = JSON.stringify(data.Items);
 
-      } catch (err) {
-          console.log("error:"+err);
-      }
+          } catch (err) {
+            console.log("error:"+err);
+          }
 
-      console.log("Scanned items:"+scanneditems);
+          //add 5 seconds to when will next allow fetch
+          live_data.time = timer.setSeconds( timer.getSeconds()+5 );
 
-      /*var scanresponse = {
-        statusCode: 200,
-        body: scanneditems
-      };*/
+        }
+      else {
+          console.log("using existing data rather than rescanning");
+        }
 
-      return new response_obj(200,scanneditems);
+      console.log("Scanned items:"+live_data.vars);
 
-      //return scanresponse;
-
+      return new response_obj(200,live_data.vars);
     }
 
     else if (event.operation == 'pharmaoverview')
@@ -186,5 +194,22 @@ exports.handler = async (event) => {
       console.log("new vial for:"+nvcubicle+"with doses:"+doses);
       // reset cubicle counter to number
 
+      var vialset = {
+        TableName:'pjcovid-vials',
+        Key: {
+          "cubicle":nvcubicle
+        },
+        UpdateExpression: 'set thisvial :base, pervial :pervial',
+        ExpressionAttributeValues: {
+          ":base": 0,
+          ":pervial": pervial
+          },
+        ReturnValues: 'ALL_NEW'
+      };
+
+      let nvdata = await dynamodb.update(vialdecrement).promise();
+      vials_return_array = JSON.stringify(nvdata);
+
+      return new response_obj(200, { vial: vials_return_array });
     }
 };
