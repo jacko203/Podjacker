@@ -6,7 +6,6 @@ let dynamodb = new AWS.DynamoDB.DocumentClient();
 
 // Store date and time in human-readable format in a variable
 
-var testreturn = 0;
 var json_return_array;
 var vials_return_array;
 
@@ -86,20 +85,54 @@ exports.handler = async (event) => {
 
     console.log("Returning");
 
-      var response = {
-        statusCode: 200,
-        body: json_return_array
-      };
-
-      return response;
+      return new response_obj(200, { overview: json_return_array,
+                                     vial: vials_return_array});
     }
 
     else if (event.operation == 'removejab')
     {
-      console.log("remove jab");
-      // get last Item
-      // delete last item
+      var cubicle = event.cubicle;
+      var timestamp = event.timestamp;
+
+      console.log("remove jab: t:"+timestamp+"from c:"+cubicle);
+
+      var removeparams = {
+        TableName: "text-pjcovid-vaccines",
+        Key: {  "cubicle": cubicle,
+                "timestamp": timestamp }
+      };
+
+
+
       // subtract thiscubicle by 1
+      var vialdecrement = {
+        TableName:'pjcovid-vials',
+        Key: {
+          "cubicle":cubicle
+        },
+        UpdateExpression: 'subtract thisvial :increment, thiscubicle :increment',
+        ExpressionAttributeValues: {
+          ":increment": 1
+          },
+        ReturnValues: 'ALL_NEW'
+      };
+
+      try {
+        let r = await dynamodb.delete(removeparams).promise();
+      // delete last item
+        console.log("delete return:"+r);
+        let vialdata = await dynamodb.update(vialdecrement).promise();
+        let data = await dynamodb.query(readparams).promise();
+
+        json_return_array = JSON.stringify(data.Items);
+        vials_return_array = JSON.stringify(vialdata.Items);
+
+
+    } catch (err) { console.log(err) }
+        return new response_obj(200, { overview: json_return_array,
+                                       vial: vials_return_array
+                                     });
+
     }
 
     else if (event.operation == 'gpoverview')
@@ -122,7 +155,7 @@ exports.handler = async (event) => {
       try {
 
             var data = await dynamodb.scan(scanparams).promise();
-            scanneditems = JSON.stringify(data.items);
+            var scanneditems = JSON.stringify(data.Items);
 
       } catch (err) {
           console.log("error:"+err);
@@ -130,12 +163,14 @@ exports.handler = async (event) => {
 
       console.log("Scanned items:"+scanneditems);
 
-      var response = {
+      /*var scanresponse = {
         statusCode: 200,
         body: scanneditems
-      };
+      };*/
 
-      return response;
+      return new response_obj(200,scanneditems);
+
+      //return scanresponse;
 
     }
 
@@ -146,9 +181,9 @@ exports.handler = async (event) => {
 
     else if (event.operation == 'newvial')
     {
-      var cubicle = event.cubicle;
+      var nvcubicle = event.cubicle;
       var doses = event.vialdoses;
-      console.log("new vial for:"+cubicle+"with doses:"+doses);
+      console.log("new vial for:"+nvcubicle+"with doses:"+doses);
       // reset cubicle counter to number
 
     }
