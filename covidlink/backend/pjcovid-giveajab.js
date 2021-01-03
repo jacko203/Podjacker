@@ -2,17 +2,11 @@
 const AWS = require('aws-sdk');
 // Instantiate a DynamoDB document client with the SDK
 let dynamodb = new AWS.DynamoDB.DocumentClient();
-// Use built-in module to get current date & time
-
-// Store date and time in human-readable format in a variable
 
 var json_return_array;
 var vials_return_array;
 
-var live_data {
-  vars: string,
-  time: Date
-};
+var live_data = {};
 
 class response_obj {
   constructor(statuscode, body) {
@@ -105,8 +99,8 @@ exports.handler = async (event) => {
       var removeparams = {
         TableName: "text-pjcovid-vaccines",
         Key: {  "cubicle": cubicle,
-                "timestamp": timestamp,
-        ReturnValues: "ALL_OLD" } //returns empty if nothing deleted
+                "timestamp": timestamp },
+        ReturnValues: "ALL_OLD"  //returns empty if nothing deleted
       };
 
       // subtract thiscubicle by 1
@@ -115,23 +109,33 @@ exports.handler = async (event) => {
         Key: {
           "cubicle":cubicle
         },
-        UpdateExpression: 'subtract thisvial :increment, thiscubicle :increment',
+        UpdateExpression: 'add thisvial :increment, thiscubicle :increment',
         ExpressionAttributeValues: {
-          ":increment": 1
+          ":increment": -1
           },
         ReturnValues: 'ALL_NEW'
       };
+
+      var readparams = {
+            TableName : "text-pjcovid-vaccines",
+            KeyConditionExpression: "cubicle = :cubval",
+            ExpressionAttributeValues: {
+                ":cubval": cubicle
+                }
+              };
 
       try {
         let r = await dynamodb.delete(removeparams).promise();
       // delete last item
         console.log("delete return:"+r);
-        let vialdata = await dynamodb.update(vialdecrement).promise();
-        let data = await dynamodb.query(readparams).promise();
 
+        var vialdata = await dynamodb.update(vialdecrement).promise();
+          if(vialdata==null) throw new Error("null return delete");
+
+        vials_return_array = JSON.stringify(vialdata);
+
+        var data = await dynamodb.query(readparams).promise();
         json_return_array = JSON.stringify(data.Items);
-        vials_return_array = JSON.stringify(vialdata.Items);
-
 
     } catch (err) { console.log(err) }
         return new response_obj(200, { overview: json_return_array,
@@ -156,6 +160,9 @@ exports.handler = async (event) => {
 
 
       var timer = new Date();
+
+      console.log("determining time elapsed. timer="+timer+"live_data:"+live_data.time);
+
       if (live_data.time < timer || live_data.time === undefined) {
 
         console.log("New scan event");
@@ -202,12 +209,12 @@ exports.handler = async (event) => {
         UpdateExpression: 'set thisvial :base, pervial :pervial',
         ExpressionAttributeValues: {
           ":base": 0,
-          ":pervial": pervial
+          ":pervial": doses
           },
         ReturnValues: 'ALL_NEW'
       };
 
-      let nvdata = await dynamodb.update(vialdecrement).promise();
+      let nvdata = await dynamodb.update(vialset).promise();
       vials_return_array = JSON.stringify(nvdata);
 
       return new response_obj(200, { vial: vials_return_array });
