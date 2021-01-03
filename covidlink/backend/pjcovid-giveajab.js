@@ -10,6 +10,13 @@ var testreturn = 0;
 var json_return_array;
 var vials_return_array;
 
+class response_obj {
+  constructor(statuscode, body) {
+    this.statusCode = statuscode;
+    this.body = body;
+  }
+}
+
 exports.handler = async (event) => {
 
     //make this better
@@ -34,7 +41,7 @@ exports.handler = async (event) => {
         Key: {
           "cubicle":int_cubicle
         },
-        UpdateExpression: 'add thisvial :increment',
+        UpdateExpression: 'add thisvial :increment, thiscubicle :increment',
         ExpressionAttributeValues: {
           ":increment": 1
           },
@@ -82,7 +89,7 @@ exports.handler = async (event) => {
       var response = {
         statusCode: 200,
         body: json_return_array
-      }
+      };
 
       return response;
     }
@@ -90,11 +97,46 @@ exports.handler = async (event) => {
     else if (event.operation == 'removejab')
     {
       console.log("remove jab");
+      // get last Item
+      // delete last item
+      // subtract thiscubicle by 1
     }
 
     else if (event.operation == 'gpoverview')
     {
+
       console.log("GP Lead screen");
+      // need to return array containing number of vaccines for each cubicle (passed number of cubicles)
+
+      let cubicle_count = event.cubicle_count;
+
+      //scan table then local function to return into array
+      // select count
+      var scanparams = {
+            TableName : "pjcovid-vials",
+            FilterExpression : "cubicle <= :cubicle_count",
+            ExpressionAttributeValues : { ":cubicle_count": cubicle_count }
+          };
+
+          // TODO? limit time between scans? have global variable updated every x seconds?
+      try {
+
+            var data = await dynamodb.scan(scanparams).promise();
+            scanneditems = JSON.stringify(data.items);
+
+      } catch (err) {
+          console.log("error:"+err);
+      }
+
+      console.log("Scanned items:"+scanneditems);
+
+      var response = {
+        statusCode: 200,
+        body: scanneditems
+      };
+
+      return response;
+
     }
 
     else if (event.operation == 'pharmaoverview')

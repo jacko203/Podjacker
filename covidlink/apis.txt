@@ -1,0 +1,21 @@
+
+
+gpoverview - at present is a POST posting number of cubicles but I'm sure could be simplified with GET processing cubicles locally
+
+  args: cubicle: "number of cubicles requiring return - will query DB from cubicle 1-number"
+  returns array [0-(number-1)] each representing 1 cubicle
+    - total: total vaccines
+    - thisvial: number given since counter reset
+    - pervial: number of doses to be given this vial (usually 5 or 6)
+
+dovaccinate - post
+  args: cubicle: the number of the cubicle administering the vaccine
+  returns array containing all timestamps for this cubicle (todo: return object containing array and also vial data above)
+
+newvial - post (not written yet)
+  args: cubicle: the number of the cubicles
+        pervial: the number of vaccines which will be delivered (likely 5 or 6))
+
+removejab - POST - remove specified timestamp (not written yet)
+  args: cubicle
+        timestamp
