@@ -1,5 +1,6 @@
 // Include the AWS SDK module
 const AWS = require('aws-sdk');
+const pjcs = require('./pjcovid-sessions.js');
 // Instantiate a DynamoDB document client with the SDK
 let dynamodb = new AWS.DynamoDB.DocumentClient();
 
@@ -11,7 +12,7 @@ var live_data = {};
 class response_obj {
   constructor(statuscode, body) {
     this.statusCode = statuscode;
-    this.body = body;
+    this.bodya = body;
   }
 }
 
@@ -25,8 +26,17 @@ exports.handler = async (event) => {
     {
       case "dovaccinate": return pjc_vaccinate(key.cubicle);
       case "removejab": return pjc_removejab(key.cubicle, key.timestamp);
-      case "newvial": return pjc_newvial(key.cubicle, key.vialdoses);
+      case "newvial": return pjc_newvial(key.cubicle, key.vialdoses, key.wastage);
       case "gpoverview": return pjc_gpoverview(key.cubicle_count);
+      case "initialisecubicle": return pjc_initialisecubicle(key.cubicle, key.vialdoses);
+      case "returnsessiondata": return pjcs.pjc_returnsessiondata(key.sessionID,key.bookings);
+
+    //  case "setbooked" : return pjcs.pjc_amendbooked(key.sessionID, key.bookings);
+      case "addDNA" : return pjcs.pjc_amend_DNAs(key.sessionID,key.increment);
+      case "addExtra" : return pjcs.pjc_amend_extras(key.sessionID,key.increment);
+      case "getsessionID" : return pjcs.pjc_getsession();
+      case "setsessionID" : return pjcs.pjc_setsession(key.sessionID);
+
       default: return new response_obj(400,JSON.stringify("No event operation"));
     }
 
@@ -36,15 +46,19 @@ exports.handler = async (event) => {
 async function pjc_gpoverview(cubicle_count) {
 
       console.log("GP Lead screen: "+cubicle_count);
-      var int_cubicle_count = parseInt(cubicle_count);
 
       //scan table then local function to return into array
       var scanparams = {
-            TableName : "pjcovid-vials",
-            FilterExpression : "cubicle <= :cubicle_count",
-            ExpressionAttributeValues : { ":cubicle_count": int_cubicle_count }
-          };
+        TableName : "pjcovid-vials"
+      };
 
+      var int_cubicle_count = parseInt(cubicle_count,10);
+      if (isFinite(int_cubicle_count)) {
+        scanparams.FilterExpression = "cubicle <= :cubicle_count";
+        scanparams.ExpressionAttributeValues = { ":cubicle_count": int_cubicle_count };
+      }
+
+      console.log("new scanparams:"+scanparams);
 
       var timer = new Date();
 
@@ -95,7 +109,7 @@ async function pjc_vaccinate(cubicle) {
 
   let date = new Date();
   let now = date.toISOString();
-  var int_cubicle = parseInt(cubicle);
+  var int_cubicle = parseInt(cubicle,10);
 
   let params = {
     TableName:'text-pjcovid-vaccines',
@@ -214,20 +228,74 @@ async function pjc_removejab(cubicle, timestamp) {
                                    });
 }
 
-async function pjc_newvial(nvcubicle, doses) {
+async function pjc_newvial(nvcubicle, doses, unusable) {
 
     console.log("new vial for:"+nvcubicle+"with doses:"+doses);
     // reset cubicle counter to number
+    var int_doses = parseInt(doses,0);
+    var int_cubicle = parseInt(nvcubicle,0);
+    var int_unusable = parseInt(unusable,0);
 
     var vialset = {
       TableName:'pjcovid-vials',
       Key: {
-        "cubicle":nvcubicle
+        "cubicle":int_cubicle
       },
-      UpdateExpression: 'set thisvial :base, pervial :pervial',
+      ReturnValues: 'ALL_NEW'
+    };
+
+    if (unusable != 0) {
+      vialset.UpdateExpression = 'set thisvial = :baseline, pervial = :pervial, unusable = unusable + :unusable';
+      vialset.ExpressionAttributeValues = {
+        ":baseline": 0,
+        ":pervial": int_doses,
+        ":unusable": int_unusable
+        };
+    }
+    else {
+      vialset.UpdateExpression = 'set thisvial = :baseline, pervial = :pervial';
+      vialset.ExpressionAttributeValues = {
+        ":baseline": 0,
+        ":pervial": int_doses
+        };
+
+    }
+
+    /*var thissession = "day1am";
+    var vial_count = {
+      TableName:'pjcovid-sessions',
+      Key:{
+        "pjcsession":thissession
+      },
+      UpdateExpression: 'set sessionvials = sessionvials + :increment',
+      ExpressionAttributeValues: { "increment" : 1 },
+      ReturnValues: 'ALL_NEW'
+    };*/
+    //add vial
+
+
+    let nvdata = await dynamodb.update(vialset).promise();
+    vials_return_array = JSON.stringify(nvdata);
+
+    return new response_obj(200, { vial: vials_return_array });
+  }
+
+  async function pjc_initialisecubicle(nvcubicle, doses) {
+
+    console.log("initialise cubicle:"+nvcubicle+"with doses:"+doses);
+    // reset cubicle counter to number
+    var int_doses = parseInt(doses,0);
+    var int_cubicle = parseInt(nvcubicle,0);
+
+    var vialset = {
+      TableName:'pjcovid-vials',
+      Key: {
+        "cubicle":int_cubicle
+      },
+      UpdateExpression: 'set pervial = :pervial, thisvial = :zerodoses',
       ExpressionAttributeValues: {
-        ":base": 0,
-        ":pervial": doses
+        ":pervial": int_doses,
+        ":zerodoses":0
         },
       ReturnValues: 'ALL_NEW'
     };
@@ -237,3 +305,29 @@ async function pjc_newvial(nvcubicle, doses) {
 
     return new response_obj(200, { vial: vials_return_array });
   }
+
+const pjc_adjustunusable = async (cubicle, increment) => {
+
+  var int_cubicle = parseInt(cubicle,0);
+  var int_increment = parseInt(increment,0);
+
+  var unusableincrement = {
+    TableName:'pjcovid-vials',
+    Key: {
+        "cubicle":int_cubicle
+        },
+    UpdateExpression: 'add unusable :increment',
+    ExpressionAttributeValues: {
+        ":increment": int_increment
+    },
+    ReturnValues: 'ALL_NEW'
+  };
+
+  let nu_data = await dynamodb.update(unusableincrement).promise();
+  vials_return_array = JSON.stringify(nu_data);
+};
+
+const pjc_initialisedatabases = async (n) =>
+{
+  //drop number = n
+};
